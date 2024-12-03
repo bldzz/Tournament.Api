@@ -13,7 +13,7 @@ namespace Tournament.Core.Entities
         public int TournamentId { get; set; }
 
         // Navigation property to TournamentDetails
-     
-        public TournamentDetails TournamentDetails { get; set; } = null!;
+
+        public TournamentDetails? TournamentDetails { get; set; } // Made nullable to avoid errors during POST
     }
 }

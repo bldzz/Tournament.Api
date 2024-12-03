@@ -34,6 +34,12 @@ namespace Tournament.Api
             //    .AddNewtonsoftJson()
             //    .AddXmlDataContractSerializerFormatters();
 
+
+            // Register Unit of Work
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+
+            //added this to solve POSTMAN error
             builder.Services.AddControllers(opt => opt.ReturnHttpNotAcceptable = true)
             .AddNewtonsoftJson(options =>
             {

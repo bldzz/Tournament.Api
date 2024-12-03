@@ -1,11 +1,9 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Data;
 using Tournament.Core.Entities;
+using Tournament.Core.Repositories;
 
 namespace Tournament.Api.Controllers
 {
@@ -13,35 +11,33 @@ namespace Tournament.Api.Controllers
     [ApiController]
     public class GamesController : ControllerBase
     {
-        private readonly TournamentApiContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public GamesController(TournamentApiContext context)
+        public GamesController(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         // GET: api/Games
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Game>>> GetGames()
         {
-            // Include related TournamentDetails in the response
-            return await _context.Games.Include(g => g.TournamentDetails).ToListAsync();
+            var games = await _unitOfWork.GameRepository.GetAllAsync();
+            return Ok(games);
         }
 
         // GET: api/Games/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Game?>> GetGame(int id)
         {
-            var game = await _context.Games
-                                      .Include(g => g.TournamentDetails) // Include related TournamentDetails
-                                      .FirstOrDefaultAsync(g => g.Id == id);
+            var game = await _unitOfWork.GameRepository.GetAsync(id);
 
             if (game == null)
             {
                 return NotFound($"Game with ID {id} not found.");
             }
 
-            return game;
+            return Ok(game);
         }
 
         // PUT: api/Games/5
@@ -53,17 +49,15 @@ namespace Tournament.Api.Controllers
                 return BadRequest("The provided game ID does not match the game entity.");
             }
 
-            // Attach the entity and set its state to Modified
-            _context.Attach(game);
-            _context.Entry(game).State = EntityState.Modified;
+            _unitOfWork.GameRepository.Update(game);
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _unitOfWork.CompleteAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!GameExists(id))
+                if (!await _unitOfWork.GameRepository.AnyAsync(id))
                 {
                     return NotFound($"Game with ID {id} not found.");
                 }
@@ -73,44 +67,33 @@ namespace Tournament.Api.Controllers
                 }
             }
 
-            // Return the updated entity with TournamentDetails included
-            return Ok(await _context.Games.Include(g => g.TournamentDetails)
-                                          .FirstOrDefaultAsync(g => g.Id == id));
+            return Ok(game);
         }
 
         // POST: api/Games
         [HttpPost]
         public async Task<ActionResult<Game>> PostGame(Game game)
         {
-            _context.Games.Add(game);
-            await _context.SaveChangesAsync();
+            _unitOfWork.GameRepository.Add(game);
+            await _unitOfWork.CompleteAsync();
 
-            // Include TournamentDetails in the response
-            var createdGame = await _context.Games.Include(g => g.TournamentDetails)
-                                                  .FirstOrDefaultAsync(g => g.Id == game.Id);
-
-            return CreatedAtAction(nameof(GetGame), new { id = createdGame.Id }, createdGame);
+            return CreatedAtAction(nameof(GetGame), new { id = game.Id }, game);
         }
 
         // DELETE: api/Games/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteGame(int id)
         {
-            var game = await _context.Games.FindAsync(id);
+            var game = await _unitOfWork.GameRepository.GetAsync(id);
             if (game == null)
             {
                 return NotFound($"Game with ID {id} not found.");
             }
 
-            _context.Games.Remove(game);
-            await _context.SaveChangesAsync();
+            _unitOfWork.GameRepository.Remove(game);
+            await _unitOfWork.CompleteAsync();
 
             return NoContent();
-        }
-
-        private bool GameExists(int id)
-        {
-            return _context.Games.Any(e => e.Id == id);
         }
     }
 }
