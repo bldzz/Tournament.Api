@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Tournament.Core.Entities;
-using Tournament.Core.Repositories;
 using Tournament.Core.Dto;
+using Tournament.Core.Repositories;
+using AutoMapper;
+using Tournament.Core.Entities;
 
 namespace Tournament.Api.Controllers
 {
@@ -39,7 +39,7 @@ namespace Tournament.Api.Controllers
 
             if (tournamentDetails == null)
             {
-                return NotFound("Tournament with the provided ID not found.");
+                return NotFound("Tournament not found");
             }
 
             var tournamentDto = _mapper.Map<TournamentDto>(tournamentDetails);
@@ -56,7 +56,6 @@ namespace Tournament.Api.Controllers
             }
 
             var tournamentDetails = _mapper.Map<TournamentDetails>(tournamentDto);
-
             _unitOfWork.TournamentRepository.Update(tournamentDetails);
 
             try
@@ -67,11 +66,11 @@ namespace Tournament.Api.Controllers
             {
                 if (!await _unitOfWork.TournamentRepository.AnyAsync(id))
                 {
-                    return NotFound("Tournament with the provided ID not found.");
+                    return NotFound("Tournament not found");
                 }
                 else
                 {
-                    throw;
+                    return StatusCode(500, "Error saving to the database.");
                 }
             }
 
@@ -82,12 +81,16 @@ namespace Tournament.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<TournamentDto>> PostTournamentDetails(TournamentDto tournamentDto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Validation failed");
+            }
+
             var tournamentDetails = _mapper.Map<TournamentDetails>(tournamentDto);
             _unitOfWork.TournamentRepository.Add(tournamentDetails);
             await _unitOfWork.CompleteAsync();
 
-            var createdTournamentDto = _mapper.Map<TournamentDto>(tournamentDetails);
-            return CreatedAtAction("GetTournamentDetails", new { id = createdTournamentDto.Id }, createdTournamentDto);
+            return CreatedAtAction("GetTournamentDetails", new { id = tournamentDetails.Id }, tournamentDto);
         }
 
         // DELETE: api/TournamentDetails/5
@@ -98,7 +101,7 @@ namespace Tournament.Api.Controllers
 
             if (tournamentDetails == null)
             {
-                return NotFound("Tournament with the provided ID not found.");
+                return NotFound("Tournament not found");
             }
 
             _unitOfWork.TournamentRepository.Remove(tournamentDetails);

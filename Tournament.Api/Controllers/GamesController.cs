@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Tournament.Core.Dto;
-using Tournament.Core.Entities;
 using Tournament.Core.Repositories;
+using AutoMapper;
+using Tournament.Core.Entities;
 
 namespace Tournament.Api.Controllers
 {
@@ -33,13 +33,13 @@ namespace Tournament.Api.Controllers
 
         // GET: api/Games/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<GameDto?>> GetGame(int id)
+        public async Task<ActionResult<GameDto>> GetGame(int id)
         {
             var game = await _unitOfWork.GameRepository.GetAsync(id);
 
             if (game == null)
             {
-                return NotFound($"Game with ID {id} not found.");
+                return NotFound("Game not found");
             }
 
             var gameDto = _mapper.Map<GameDto>(game);
@@ -66,11 +66,11 @@ namespace Tournament.Api.Controllers
             {
                 if (!await _unitOfWork.GameRepository.AnyAsync(id))
                 {
-                    return NotFound($"Game with ID {id} not found.");
+                    return NotFound("Game not found");
                 }
                 else
                 {
-                    throw;
+                    return StatusCode(500, "Error saving to the database.");
                 }
             }
 
@@ -81,12 +81,16 @@ namespace Tournament.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<GameDto>> PostGame(GameDto gameDto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Validation failed");
+            }
+
             var game = _mapper.Map<Game>(gameDto);
             _unitOfWork.GameRepository.Add(game);
             await _unitOfWork.CompleteAsync();
 
-            gameDto = _mapper.Map<GameDto>(game);
-            return CreatedAtAction(nameof(GetGame), new { id = gameDto.Id }, gameDto);
+            return CreatedAtAction(nameof(GetGame), new { id = game.Id }, gameDto);
         }
 
         // DELETE: api/Games/5
@@ -96,7 +100,7 @@ namespace Tournament.Api.Controllers
             var game = await _unitOfWork.GameRepository.GetAsync(id);
             if (game == null)
             {
-                return NotFound($"Game with ID {id} not found.");
+                return NotFound("Game not found");
             }
 
             _unitOfWork.GameRepository.Remove(game);
