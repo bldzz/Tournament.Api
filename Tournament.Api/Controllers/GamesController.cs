@@ -37,18 +37,20 @@ namespace Tournament.Api.Controllers
             return Ok(gameDtos);
         }
 
-        // GET: api/Games/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<GameDto>> GetGame(int id)
+        // GET: api/Games/title/{title}
+        [HttpGet("title/{title}")]
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetGamesByTitle(string title)
         {
-            var game = await _unitOfWork.GameRepository.GetAsync(id);
-            if (game == null)
+            var games = await _unitOfWork.GameRepository.GetAllAsync();
+            var filteredGames = games.Where(g => g.Title.Equals(title, System.StringComparison.OrdinalIgnoreCase));
+
+            if (!filteredGames.Any())
             {
-                return NotFound("Game not found");
+                return NotFound($"No games found with the title '{title}'");
             }
 
-            var gameDto = _mapper.Map<GameDto>(game);
-            return Ok(gameDto);
+            var gameDtos = _mapper.Map<IEnumerable<GameDto>>(filteredGames);
+            return Ok(gameDtos);
         }
 
         // PUT: api/Games/5
@@ -146,7 +148,7 @@ namespace Tournament.Api.Controllers
             await _unitOfWork.CompleteAsync();
 
             gameDto.Id = game.Id;
-            return CreatedAtAction(nameof(GetGame), new { id = game.Id }, gameDto);
+            return CreatedAtAction(nameof(GetGames), new { id = game.Id }, gameDto);
         }
 
         // DELETE: api/Games/5
