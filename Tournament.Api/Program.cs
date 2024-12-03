@@ -4,6 +4,7 @@ using Data;
 using Tournament.Api.Extensions;
 using Tournament.Core.Repositories;
 using Tournament.Data.Repositories;
+using Tournament.Data.Data;
 
 namespace Tournament.Api
 {
@@ -46,6 +47,9 @@ namespace Tournament.Api
                 options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
             })
             .AddXmlDataContractSerializerFormatters();
+
+            // Add AutoMapper
+            builder.Services.AddAutoMapper(typeof(TournamentMappings));
 
 
             var app = builder.Build();
