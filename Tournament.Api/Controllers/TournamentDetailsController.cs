@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Tournament.Core.Dto;
@@ -27,6 +28,11 @@ namespace Tournament.Api.Controllers
         public async Task<ActionResult<IEnumerable<TournamentDto>>> GetTournamentDetails()
         {
             var tournaments = await _unitOfWork.TournamentRepository.GetAllAsync();
+            if (tournaments == null)
+            {
+                return NotFound("No tournaments found");
+            }
+
             var tournamentDtos = _mapper.Map<IEnumerable<TournamentDto>>(tournaments);
             return Ok(tournamentDtos);
         }
@@ -36,7 +42,6 @@ namespace Tournament.Api.Controllers
         public async Task<ActionResult<TournamentDto>> GetTournamentDetails(int id)
         {
             var tournamentDetails = await _unitOfWork.TournamentRepository.GetAsync(id);
-
             if (tournamentDetails == null)
             {
                 return NotFound("Tournament not found");
@@ -55,7 +60,57 @@ namespace Tournament.Api.Controllers
                 return BadRequest("The provided tournament ID does not match the entity.");
             }
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Validation failed");
+            }
+
             var tournamentDetails = _mapper.Map<TournamentDetails>(tournamentDto);
+            _unitOfWork.TournamentRepository.Update(tournamentDetails);
+
+            try
+            {
+                await _unitOfWork.CompleteAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!await _unitOfWork.TournamentRepository.AnyAsync(id))
+                {
+                    return NotFound("Tournament not found");
+                }
+                else
+                {
+                    return StatusCode(500, "Error saving to the database.");
+                }
+            }
+
+            return Ok(tournamentDto);
+        }
+
+        // PATCH: api/TournamentDetails/5
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> PatchTournamentDetails(int id, [FromBody] JsonPatchDocument<TournamentDto> patchDocument)
+        {
+            if (patchDocument == null)
+            {
+                return BadRequest("Invalid patch document.");
+            }
+
+            var tournamentDetails = await _unitOfWork.TournamentRepository.GetAsync(id);
+            if (tournamentDetails == null)
+            {
+                return NotFound("Tournament not found");
+            }
+
+            var tournamentDto = _mapper.Map<TournamentDto>(tournamentDetails);
+            patchDocument.ApplyTo(tournamentDto, ModelState);
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _mapper.Map(tournamentDto, tournamentDetails);
             _unitOfWork.TournamentRepository.Update(tournamentDetails);
 
             try
@@ -90,6 +145,7 @@ namespace Tournament.Api.Controllers
             _unitOfWork.TournamentRepository.Add(tournamentDetails);
             await _unitOfWork.CompleteAsync();
 
+            tournamentDto.Id = tournamentDetails.Id;
             return CreatedAtAction("GetTournamentDetails", new { id = tournamentDetails.Id }, tournamentDto);
         }
 
@@ -98,7 +154,6 @@ namespace Tournament.Api.Controllers
         public async Task<IActionResult> DeleteTournamentDetails(int id)
         {
             var tournamentDetails = await _unitOfWork.TournamentRepository.GetAsync(id);
-
             if (tournamentDetails == null)
             {
                 return NotFound("Tournament not found");

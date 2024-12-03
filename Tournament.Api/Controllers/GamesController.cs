@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Tournament.Core.Dto;
@@ -27,6 +28,11 @@ namespace Tournament.Api.Controllers
         public async Task<ActionResult<IEnumerable<GameDto>>> GetGames()
         {
             var games = await _unitOfWork.GameRepository.GetAllAsync();
+            if (games == null)
+            {
+                return NotFound("No games found");
+            }
+
             var gameDtos = _mapper.Map<IEnumerable<GameDto>>(games);
             return Ok(gameDtos);
         }
@@ -36,7 +42,6 @@ namespace Tournament.Api.Controllers
         public async Task<ActionResult<GameDto>> GetGame(int id)
         {
             var game = await _unitOfWork.GameRepository.GetAsync(id);
-
             if (game == null)
             {
                 return NotFound("Game not found");
@@ -55,7 +60,57 @@ namespace Tournament.Api.Controllers
                 return BadRequest("The provided game ID does not match the game entity.");
             }
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Validation failed");
+            }
+
             var game = _mapper.Map<Game>(gameDto);
+            _unitOfWork.GameRepository.Update(game);
+
+            try
+            {
+                await _unitOfWork.CompleteAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!await _unitOfWork.GameRepository.AnyAsync(id))
+                {
+                    return NotFound("Game not found");
+                }
+                else
+                {
+                    return StatusCode(500, "Error saving to the database.");
+                }
+            }
+
+            return Ok(gameDto);
+        }
+
+        // PATCH: api/Games/5
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> PatchGame(int id, [FromBody] JsonPatchDocument<GameDto> patchDocument)
+        {
+            if (patchDocument == null)
+            {
+                return BadRequest("Invalid patch document.");
+            }
+
+            var game = await _unitOfWork.GameRepository.GetAsync(id);
+            if (game == null)
+            {
+                return NotFound("Game not found");
+            }
+
+            var gameDto = _mapper.Map<GameDto>(game);
+            patchDocument.ApplyTo(gameDto, ModelState);
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _mapper.Map(gameDto, game);
             _unitOfWork.GameRepository.Update(game);
 
             try
@@ -90,6 +145,7 @@ namespace Tournament.Api.Controllers
             _unitOfWork.GameRepository.Add(game);
             await _unitOfWork.CompleteAsync();
 
+            gameDto.Id = game.Id;
             return CreatedAtAction(nameof(GetGame), new { id = game.Id }, gameDto);
         }
 
