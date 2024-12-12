@@ -7,6 +7,7 @@ using Tournament.Core.Dto;
 using Tournament.Core.Repositories;
 using AutoMapper;
 using Tournament.Core.Entities;
+using Newtonsoft.Json;
 
 namespace Tournament.Api.Controllers
 {
@@ -164,5 +165,8 @@ namespace Tournament.Api.Controllers
 
             return NoContent();
         }
+
+
+
     }
 }

@@ -5,6 +5,8 @@ using Tournament.Api.Extensions;
 using Tournament.Core.Repositories;
 using Tournament.Data.Repositories;
 using Tournament.Data.Data;
+using Service.Contracts;
+using Tournament.Services;
 
 namespace Tournament.Api
 {
@@ -50,6 +52,13 @@ namespace Tournament.Api
 
             // Add AutoMapper
             builder.Services.AddAutoMapper(typeof(TournamentMappings));
+
+
+            // my latest services
+            builder.Services.AddScoped<IServiceManager, ServiceManager>();
+            builder.Services.AddScoped<ITournamentService, TournamentService>();
+            builder.Services.AddScoped<IGameService, GameService>();
+
 
 
             var app = builder.Build();
