@@ -2,13 +2,14 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+
 using Tournament.Core.Dto;
 using Tournament.Core.Repositories;
 using AutoMapper;
 using Tournament.Core.Entities;
+using Microsoft.EntityFrameworkCore;
 
-namespace Tournament.Api.Controllers
+namespace Tournament.Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -35,6 +36,21 @@ namespace Tournament.Api.Controllers
 
             var gameDtos = _mapper.Map<IEnumerable<GameDto>>(games);
             return Ok(gameDtos);
+        }
+
+        // GET: api/Games/6
+        [HttpGet("{id}")]
+        public async Task<ActionResult<GameDto>> GetGame(int id)
+        {
+            var game = await _unitOfWork.GameRepository.GetAsync(id);
+
+            if (game == null)
+            {
+                return NotFound($"Game with ID {id} not found");
+            }
+
+            var gameDto = _mapper.Map<GameDto>(game);
+            return Ok(gameDto);
         }
 
         // GET: api/Games/title/{title}
@@ -105,7 +121,7 @@ namespace Tournament.Api.Controllers
             }
 
             var gameDto = _mapper.Map<GameDto>(game);
-            patchDocument.ApplyTo(gameDto, ModelState);
+            patchDocument.ApplyTo(gameDto, (Microsoft.AspNetCore.JsonPatch.Adapters.IObjectAdapter)ModelState);
 
             if (!ModelState.IsValid)
             {

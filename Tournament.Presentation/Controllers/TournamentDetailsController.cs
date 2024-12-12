@@ -9,7 +9,7 @@ using AutoMapper;
 using Tournament.Core.Entities;
 using Newtonsoft.Json;
 
-namespace Tournament.Api.Controllers
+namespace Tournament.Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -104,7 +104,7 @@ namespace Tournament.Api.Controllers
             }
 
             var tournamentDto = _mapper.Map<TournamentDto>(tournamentDetails);
-            patchDocument.ApplyTo(tournamentDto, ModelState);
+            patchDocument.ApplyTo(tournamentDto, (Microsoft.AspNetCore.JsonPatch.Adapters.IObjectAdapter)ModelState);
 
             if (!ModelState.IsValid)
             {

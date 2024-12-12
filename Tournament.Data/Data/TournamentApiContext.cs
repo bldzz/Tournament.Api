@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Tournament.Core.Entities;
 
-namespace Data  // Change this to the correct namespace of your Data project if needed
+namespace Tournament.Data.Data  // Change this to the correct namespace of your Data project if needed
 {
     public class TournamentApiContext : DbContext
     {
